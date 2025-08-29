@@ -880,4 +880,107 @@
                 document.getElementById('numbersRemaining').textContent = 90 - allCalled.length;
                 
                 // Update called numbers grid
-                document.
+                const calledCell = document.getElementById(`called-${number}`);
+                if (calledCell) {
+                    calledCell.classList.add('number-called');
+                }
+                
+                if (allCalled.length === 90) {
+                    document.getElementById('callButton').disabled = true;
+                    document.getElementById('gameStatus').textContent = 'Complete';
+                }
+            } else if (currentRole === 'player') {
+                document.getElementById('playerCurrentNumber').textContent = `Last Called: ${number}`;
+                updateWinButtons();
+            }
+        });
+
+        socket.on('ticketGenerated', (ticket) => {
+            displayTicket(ticket);
+            document.getElementById('gameArea').style.display = 'block';
+        });
+
+        socket.on('gameJoined', () => {
+            const ticket = generateTicket();
+            displayTicket(ticket);
+            document.getElementById('gameArea').style.display = 'block';
+            showAlert('Successfully joined the game!', 'success');
+        });
+
+        socket.on('winnerAnnounced', (data) => {
+            const { pattern, winner } = data;
+            if (currentRole === 'host') {
+                const winnersList = document.getElementById('winnersList');
+                if (winnersList.textContent === 'No winners yet') {
+                    winnersList.innerHTML = '';
+                }
+                winnersList.innerHTML += `<div style="margin: 5px 0; padding: 10px; background: #28a745; color: white; border-radius: 5px;">🎉 ${winner} won ${getPatternDisplayName(pattern)}!</div>`;
+            } else if (currentRole === 'player') {
+                if (winner === playerName) {
+                    showAlert(`🎉 Congratulations! You won ${getPatternDisplayName(pattern)}!`, 'success');
+                    claimedWins.push(pattern);
+                    updateWinButtons();
+                } else {
+                    showAlert(`${winner} won ${getPatternDisplayName(pattern)}!`, 'success');
+                }
+            }
+        });
+
+        socket.on('winClaimed', (data) => {
+            if (data.success) {
+                claimedWins.push(data.pattern);
+                updateWinButtons();
+                showAlert(`Win confirmed for ${getPatternDisplayName(data.pattern)}!`, 'success');
+            } else {
+                showAlert(`Invalid win claim for ${getPatternDisplayName(data.pattern)}!`, 'error');
+            }
+        });
+
+        socket.on('gameReset', () => {
+            resetGameState();
+            
+            if (currentRole === 'host') {
+                document.getElementById('gameStatus').textContent = 'Waiting';
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('callButton').disabled = true;
+                document.getElementById('currentNumber').textContent = 'Ready to Start';
+                document.getElementById('numbersCalledCount').textContent = '0';
+                document.getElementById('numbersRemaining').textContent = '90';
+                document.getElementById('winnersList').textContent = 'No winners yet';
+                initializeCalledNumbersGrid();
+            } else if (currentRole === 'player') {
+                document.getElementById('playerGameStatus').textContent = 'Game Reset';
+                document.getElementById('playerCurrentNumber').textContent = 'Waiting for game to start...';
+                
+                // Reset ticket markings
+                const cells = document.querySelectorAll('.ticket-cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('marked');
+                });
+                
+                updateWinButtons();
+                document.getElementById('alerts').innerHTML = '';
+            }
+        });
+
+        socket.on('error', (message) => {
+            showAlert(message, 'error');
+        });
+
+        function getPatternDisplayName(pattern) {
+            const patterns = {
+                'earlyFive': 'Early Five',
+                'topLine': 'Top Line',
+                'middleLine': 'Middle Line',
+                'bottomLine': 'Bottom Line',
+                'corners': 'Four Corners',
+                'fullHouse': 'Full House'
+            };
+            return patterns[pattern] || pattern;
+        }
+
+        // Initialize
+        showRoleSelection();
+    </script>
+</body>
+</html>
