@@ -1,0 +1,29 @@
+{
+  "name": "tambola-game",
+  "version": "1.0.0",
+  "description": "Online Tambola/Housie game for office teams",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "tambola",
+    "housie",
+    "bingo",
+    "game",
+    "realtime"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
