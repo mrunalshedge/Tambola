@@ -146,6 +146,13 @@
             background: linear-gradient(45deg, #764ba2, #667eea);
         }
 
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .features-section {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
@@ -263,6 +270,104 @@
             color: #333;
         }
 
+        .called-numbers {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        .number-cell {
+            width: 35px;
+            height: 35px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .number-called {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .ticket-cell {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #ddd;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .ticket-cell.marked {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .ticket-cell.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .ticket-cell.empty {
+            background: #6c757d;
+            cursor: default;
+        }
+
+        .win-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .win-btn {
+            padding: 10px 20px;
+            font-size: 0.9em;
+        }
+
+        .win-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
         @media (max-width: 768px) {
             .role-selection {
                 grid-template-columns: 1fr;
@@ -279,6 +384,15 @@
             
             .features-section {
                 padding: 30px 20px;
+            }
+
+            .numbers-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+
+            .win-buttons {
+                flex-direction: column;
+                align-items: center;
             }
         }
     </style>
@@ -394,6 +508,13 @@
                 </div>
             </div>
 
+            <div class="called-numbers">
+                <h3>📋 Called Numbers</h3>
+                <div id="calledNumbersGrid" class="numbers-grid">
+                    <!-- Numbers 1-90 will be populated here -->
+                </div>
+            </div>
+
             <div id="winners" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
                 <h3>🏆 Winners</h3>
                 <div id="winnersList">No winners yet</div>
@@ -421,17 +542,23 @@
                     </div>
                 </div>
 
+                <div id="alerts"></div>
+
                 <div id="ticket" style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
                     <!-- Ticket will be generated here -->
                 </div>
 
-                <div style="text-align: center; margin: 20px 0;">
-                    <button class="btn" onclick="claimWin('earlyFive')">Early Five</button>
-                    <button class="btn" onclick="claimWin('topLine')">Top Line</button>
-                    <button class="btn" onclick="claimWin('middleLine')">Middle Line</button>
-                    <button class="btn" onclick="claimWin('bottomLine')">Bottom Line</button>
-                    <button class="btn" onclick="claimWin('corners')">Four Corners</button>
-                    <button class="btn" onclick="claimWin('fullHouse')">Full House</button>
+                <div class="win-buttons">
+                    <button class="btn win-btn" id="earlyFiveBtn" onclick="claimWin('earlyFive')" disabled>Early Five</button>
+                    <button class="btn win-btn" id="topLineBtn" onclick="claimWin('topLine')" disabled>Top Line</button>
+                    <button class="btn win-btn" id="middleLineBtn" onclick="claimWin('middleLine')" disabled>Middle Line</button>
+                    <button class="btn win-btn" id="bottomLineBtn" onclick="claimWin('bottomLine')" disabled>Bottom Line</button>
+                    <button class="btn win-btn" id="cornersBtn" onclick="claimWin('corners')" disabled>Four Corners</button>
+                    <button class="btn win-btn" id="fullHouseBtn" onclick="claimWin('fullHouse')" disabled>Full House</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px; color: #666;">
+                    <small>You can only mark numbers that have been called and claim wins when you have the correct pattern!</small>
                 </div>
             </div>
         </div>
@@ -443,6 +570,9 @@
         let gameActive = false;
         let currentTicket = [];
         let markedNumbers = [];
+        let calledNumbers = [];
+        let playerName = '';
+        let claimedWins = [];
 
         // Navigation functions
         function showRoleSelection() {
@@ -450,6 +580,7 @@
             document.getElementById('hostInterface').style.display = 'none';
             document.getElementById('playerInterface').style.display = 'none';
             currentRole = null;
+            resetGameState();
         }
 
         function showHostInterface() {
@@ -457,6 +588,7 @@
             document.getElementById('hostInterface').style.display = 'block';
             document.getElementById('playerInterface').style.display = 'none';
             currentRole = 'host';
+            initializeCalledNumbersGrid();
         }
 
         function showPlayerInterface() {
@@ -466,75 +598,106 @@
             currentRole = 'player';
         }
 
+        function resetGameState() {
+            gameActive = false;
+            markedNumbers = [];
+            calledNumbers = [];
+            claimedWins = [];
+        }
+
+        // Initialize called numbers grid for host
+        function initializeCalledNumbersGrid() {
+            const grid = document.getElementById('calledNumbersGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 90; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'number-cell';
+                cell.textContent = i;
+                cell.id = `called-${i}`;
+                grid.appendChild(cell);
+            }
+        }
+
         // Host functions
         function startGame() {
             socket.emit('startGame');
         }
 
         function callNumber() {
+            if (!gameActive) return;
             socket.emit('callNumber');
         }
 
         function resetGame() {
             socket.emit('resetGame');
+            resetGameState();
+            if (currentRole === 'host') {
+                initializeCalledNumbersGrid();
+            }
         }
 
         // Player functions
         function joinGame() {
             const name = document.getElementById('playerName').value.trim();
             if (!name) {
-                alert('Please enter your name');
+                showAlert('Please enter your name', 'error');
                 return;
             }
+            playerName = name;
             socket.emit('joinGame', name);
         }
 
-        function claimWin(pattern) {
-            socket.emit('claimWin', pattern);
+        function generateTicket() {
+            const ticket = [];
+            for (let row = 0; row < 3; row++) {
+                const ticketRow = [];
+                const usedInRow = new Set();
+                
+                // Generate 5 numbers per row with 4 empty cells
+                let numbersInRow = 0;
+                for (let col = 0; col < 9; col++) {
+                    if (numbersInRow < 5 && Math.random() < 0.6) {
+                        // Generate number for this column range
+                        const min = col * 10 + (col === 0 ? 1 : 0);
+                        const max = col * 10 + 9;
+                        let number;
+                        do {
+                            number = Math.floor(Math.random() * (max - min + 1)) + min;
+                        } while (usedInRow.has(number));
+                        
+                        usedInRow.add(number);
+                        ticketRow.push(number);
+                        numbersInRow++;
+                    } else {
+                        ticketRow.push(0); // Empty cell
+                    }
+                }
+                
+                // Ensure exactly 5 numbers per row
+                while (numbersInRow < 5) {
+                    const emptyIndex = ticketRow.findIndex(val => val === 0);
+                    if (emptyIndex !== -1) {
+                        const col = emptyIndex;
+                        const min = col * 10 + (col === 0 ? 1 : 0);
+                        const max = col * 10 + 9;
+                        let number;
+                        do {
+                            number = Math.floor(Math.random() * (max - min + 1)) + min;
+                        } while (usedInRow.has(number));
+                        
+                        usedInRow.add(number);
+                        ticketRow[emptyIndex] = number;
+                        numbersInRow++;
+                    }
+                }
+                
+                ticket.push(ticketRow);
+            }
+            return ticket;
         }
 
-        // Socket event handlers
-        socket.on('playerCount', (count) => {
-            document.getElementById('playerCount').textContent = count;
-        });
-
-        socket.on('gameStarted', () => {
-            gameActive = true;
-            if (currentRole === 'host') {
-                document.getElementById('gameStatus').textContent = 'Active';
-                document.getElementById('startButton').disabled = true;
-                document.getElementById('callButton').disabled = false;
-            } else if (currentRole === 'player') {
-                document.getElementById('playerGameStatus').textContent = 'Game Active';
-            }
-        });
-
-        socket.on('numberCalled', (data) => {
-            const { number, calledNumbers } = data;
-            if (currentRole === 'host') {
-                document.getElementById('currentNumber').textContent = number;
-                document.getElementById('numbersCalledCount').textContent = calledNumbers.length;
-                document.getElementById('numbersRemaining').textContent = 90 - calledNumbers.length;
-            } else if (currentRole === 'player') {
-                document.getElementById('playerCurrentNumber').textContent = number;
-            }
-        });
-
-        socket.on('ticketGenerated', (ticket) => {
-            currentTicket = ticket;
-            displayTicket(ticket);
-            document.getElementById('gameArea').style.display = 'block';
-        });
-
-        socket.on('winnerAnnounced', (data) => {
-            const { pattern, winner } = data;
-            if (currentRole === 'host') {
-                const winnersList = document.getElementById('winnersList');
-                winnersList.innerHTML += `<div style="margin: 5px 0; padding: 10px; background: #28a745; color: white; border-radius: 5px;">🎉 ${winner} won ${pattern}!</div>`;
-            }
-        });
-
         function displayTicket(ticket) {
+            currentTicket = ticket;
             const ticketElement = document.getElementById('ticket');
             let html = '<table style="width: 100%; border-collapse: collapse;">';
             
@@ -545,9 +708,9 @@
                     const cellId = `cell-${row}-${col}`;
                     
                     if (number === 0) {
-                        html += '<td style="width: 50px; height: 50px; border: 2px solid #ddd; background: #6c757d;"></td>';
+                        html += '<td class="ticket-cell empty"></td>';
                     } else {
-                        html += `<td style="width: 50px; height: 50px; border: 2px solid #ddd; text-align: center; font-weight: bold; cursor: pointer; background: #f8f9fa;" id="${cellId}" onclick="markNumber(${number})">${number}</td>`;
+                        html += `<td class="ticket-cell" id="${cellId}" data-number="${number}" onclick="markNumber(${number})">${number}</td>`;
                     }
                 }
                 html += '</tr>';
@@ -557,17 +720,164 @@
         }
 
         function markNumber(number) {
-            // Add marking logic here
-            const cells = document.querySelectorAll(`td[onclick*="${number}"]`);
+            // Only allow marking if the number has been called
+            if (!calledNumbers.includes(number)) {
+                showAlert(`Number ${number} has not been called yet!`, 'error');
+                return;
+            }
+
+            if (markedNumbers.includes(number)) {
+                return; // Already marked
+            }
+
+            markedNumbers.push(number);
+            
+            // Mark the number on the ticket
+            const cells = document.querySelectorAll(`td[data-number="${number}"]`);
             cells.forEach(cell => {
-                cell.style.background = '#28a745';
-                cell.style.color = 'white';
+                cell.classList.add('marked');
             });
+
+            // Update win button states
+            updateWinButtons();
+            
+            // Notify server
             socket.emit('markNumber', number);
         }
 
-        // Initialize
-        showRoleSelection();
-    </script>
-</body>
-</html>
+        function updateWinButtons() {
+            // Enable/disable win buttons based on current marks
+            document.getElementById('earlyFiveBtn').disabled = !canClaimEarlyFive();
+            document.getElementById('topLineBtn').disabled = !canClaimLine(0) || claimedWins.includes('topLine');
+            document.getElementById('middleLineBtn').disabled = !canClaimLine(1) || claimedWins.includes('middleLine');
+            document.getElementById('bottomLineBtn').disabled = !canClaimLine(2) || claimedWins.includes('bottomLine');
+            document.getElementById('cornersBtn').disabled = !canClaimCorners() || claimedWins.includes('corners');
+            document.getElementById('fullHouseBtn').disabled = !canClaimFullHouse() || claimedWins.includes('fullHouse');
+        }
+
+        function canClaimEarlyFive() {
+            return markedNumbers.length >= 5 && !claimedWins.includes('earlyFive');
+        }
+
+        function canClaimLine(rowIndex) {
+            let markedInRow = 0;
+            for (let col = 0; col < 9; col++) {
+                const number = currentTicket[rowIndex][col];
+                if (number !== 0 && markedNumbers.includes(number)) {
+                    markedInRow++;
+                }
+            }
+            return markedInRow === 5;
+        }
+
+        function canClaimCorners() {
+            const corners = [
+                currentTicket[0].find(n => n !== 0), // First non-zero in top row
+                currentTicket[0][currentTicket[0].lastIndexOf(currentTicket[0].slice().reverse().find(n => n !== 0))], // Last non-zero in top row
+                currentTicket[2].find(n => n !== 0), // First non-zero in bottom row
+                currentTicket[2][currentTicket[2].lastIndexOf(currentTicket[2].slice().reverse().find(n => n !== 0))] // Last non-zero in bottom row
+            ];
+            
+            return corners.every(corner => corner && markedNumbers.includes(corner));
+        }
+
+        function canClaimFullHouse() {
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const number = currentTicket[row][col];
+                    if (number !== 0 && !markedNumbers.includes(number)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function claimWin(pattern) {
+            if (!gameActive) {
+                showAlert('Game is not active!', 'error');
+                return;
+            }
+
+            let canClaim = false;
+            switch (pattern) {
+                case 'earlyFive':
+                    canClaim = canClaimEarlyFive();
+                    break;
+                case 'topLine':
+                    canClaim = canClaimLine(0);
+                    break;
+                case 'middleLine':
+                    canClaim = canClaimLine(1);
+                    break;
+                case 'bottomLine':
+                    canClaim = canClaimLine(2);
+                    break;
+                case 'corners':
+                    canClaim = canClaimCorners();
+                    break;
+                case 'fullHouse':
+                    canClaim = canClaimFullHouse();
+                    break;
+            }
+
+            if (!canClaim) {
+                showAlert(`You cannot claim ${pattern} yet!`, 'error');
+                return;
+            }
+
+            if (claimedWins.includes(pattern)) {
+                showAlert(`You have already claimed ${pattern}!`, 'error');
+                return;
+            }
+
+            socket.emit('claimWin', { pattern, markedNumbers });
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Socket event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('playerCount', (count) => {
+            document.getElementById('playerCount').textContent = count;
+        });
+
+        socket.on('gameStarted', (data) => {
+            gameActive = true;
+            calledNumbers = data.calledNumbers || [];
+            
+            if (currentRole === 'host') {
+                document.getElementById('gameStatus').textContent = 'Active';
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('callButton').disabled = false;
+                document.getElementById('currentNumber').textContent = 'Game Started';
+            } else if (currentRole === 'player') {
+                document.getElementById('playerGameStatus').textContent = 'Game Active';
+                updateWinButtons();
+            }
+        });
+
+        socket.on('numberCalled', (data) => {
+            const { number, calledNumbers: allCalled } = data;
+            calledNumbers = allCalled;
+            
+            if (currentRole === 'host') {
+                document.getElementById('currentNumber').textContent = `${number}`;
+                document.getElementById('numbersCalledCount').textContent = allCalled.length;
+                document.getElementById('numbersRemaining').textContent = 90 - allCalled.length;
+                
+                // Update called numbers grid
+                document.
